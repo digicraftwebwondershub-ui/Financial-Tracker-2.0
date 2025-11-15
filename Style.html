@@ -27,6 +27,32 @@
         background-color: var(--light-bg);
     }
 
+    /* Additions for better dark mode compatibility */
+
+    /* Ensure all text inside the main container is light */
+    body.dark-mode .container-fluid,
+    body.dark-mode .h1,
+    body.dark-mode .h2,
+    body.dark-mode h1,
+    body.dark-mode h2,
+    body.dark-mode p,
+    body.dark-mode .card-title,
+    body.dark-mode .card-text {
+    color: var(--text-color) !important;
+    }
+
+    /* Fix Bootstrap alert background in dark mode */
+    body.dark-mode .alert-info {
+    background-color: #0d3b66 !important; /* Darker blue */
+    color: #cce5ff !important;
+    border-color: #082845 !important;
+    }
+
+    /* Ensure the text inside the grey placeholders also becomes light */
+    body.dark-mode .stat-card {
+    color: var(--text-color) !important;
+    }
+
     body.dark-mode .navbar-light { background-color: var(--dark-bg) !important; border-bottom: 1px solid #333; }
     body.dark-mode .navbar-light .navbar-brand,
     body.dark-mode .navbar-light .nav-link { color: var(--text-color); }
