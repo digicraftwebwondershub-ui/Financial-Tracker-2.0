@@ -1,193 +1,62 @@
-<style>
-    /* Modern UI/UX Styles */
-    :root {
-        --primary-color: #007bff; /* Bootstrap Blue */
-        --secondary-color: #6c757d;
-        --success-color: #28a745;
-        --danger-color: #dc3545;
-        --warning-color: #ffc107;
-        --light-bg: #f8f9fa;
-        --dark-bg: #212529;
-        --card-bg: #ffffff;
-        --text-color: #212529;
-    }
-
-    body {
-        background-color: var(--light-bg);
-        color: var(--text-color);
-        transition: background-color 0.3s, color 0.3s;
-    }
-    
-    /* Dark Mode Overrides */
-    body.dark-mode {
-        --light-bg: #121212;
-        --dark-bg: #1e1e1e;
-        --card-bg: #1e1e1e;
-        --text-color: #e0e0e0;
-        background-color: var(--light-bg);
-    }
-
-    /* Additions for better dark mode compatibility */
-
-    /* Ensure all text inside the main container is light */
-    body.dark-mode .container-fluid,
-    body.dark-mode .h1,
-    body.dark-mode .h2,
-    body.dark-mode h1,
-    body.dark-mode h2,
-    body.dark-mode p,
-    body.dark-mode .card-title,
-    body.dark-mode .card-text {
-    color: var(--text-color) !important;
-    }
-
-    /* Fix Bootstrap alert background in dark mode */
-    body.dark-mode .alert-info {
-    background-color: #0d3b66 !important; /* Darker blue */
-    color: #cce5ff !important;
-    border-color: #082845 !important;
-    }
-
-    /* Ensure the text inside the grey placeholders also becomes light */
-    body.dark-mode .stat-card {
-    color: var(--text-color) !important;
-    }
-
-    body.dark-mode .navbar-light { background-color: var(--dark-bg) !important; border-bottom: 1px solid #333; }
-    body.dark-mode .navbar-light .navbar-brand,
-    body.dark-mode .navbar-light .nav-link { color: var(--text-color); }
-    body.dark-mode .bg-light { background-color: var(--dark-bg) !important; }
-    body.dark-mode .text-muted { color: #aaa !important; }
-    body.dark-mode .card {
-        background-color: var(--card-bg);
-        border-color: #333;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
-        color: var(--text-color);
-    }
-    body.dark-mode .form-control, 
-    body.dark-mode .form-select { background-color: #333; color: var(--text-color); border-color: #444; }
-    body.dark-mode .modal-content { background-color: var(--dark-bg); }
-    body.dark-mode table { color: var(--text-color); }
-    body.dark-mode .card-title { color: var(--text-color) !important; }
-
-    /* Credit Card List Styling */
-    .credit-card-item .progress-bar {
-        background-color: var(--primary-color);
-    }
-    .usage-badge {
-        font-size: 0.8rem;
-    }
-
-    /* Savings Goal List Styling */
-    .goal-item .progress-bar {
-        background-color: var(--success-color);
-    }
-
-    /* Transaction Card Styling */
-    .transaction-card {
-        border-radius: 10px;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 1px solid #e9ecef;
-    }
-    .transaction-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.1);
-    }
-    .transaction-card .card-title {
-        font-weight: 600;
-    }
-    .transaction-card .transaction-actions {
-        opacity: 0;
-        transition: opacity 0.2s;
-    }
-    .transaction-card:hover .transaction-actions {
-        opacity: 1;
-    }
-    .transaction-card .text-success { color: var(--success-color) !important; }
-    .transaction-card .text-danger { color: var(--danger-color) !important; }
-    .transaction-card .text-info { color: #17a2b8 !important; } /* Bootstrap info color */
-    body.dark-mode .transaction-card {
-        border-color: #333;
-    }
-
-    /* Credit Card Widget Styling */
-    .credit-card-widget {
-        border-width: 2px;
-        border-style: solid;
-        border-radius: 12px;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .credit-card-widget:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.1);
-    }
-    .usage-badge-pill {
-        font-size: 0.9rem;
-        font-weight: 600;
-        padding: 0.4em 0.8em;
-        border-radius: 50rem;
-        color: #fff;
-    }
-
-
-    /* Sidebar Styling */
-    .sidebar { 
-        position: fixed; 
-        top: 0; 
-        bottom: 0; 
-        left: 0; 
-        z-index: 1000; 
-        padding: 48px 0 0; /* space for the navbar */
-        box-shadow: 0 0 10px rgba(0,0,0,.1);
-        border-right: 1px solid rgba(0,0,0,.1);
-    }
-    body.dark-mode .sidebar { border-right-color: #333; }
-
-    .sidebar-sticky { position: relative; top: 0; height: calc(100vh - 48px); overflow-x: hidden; overflow-y: auto; }
-    .sidebar .nav-link { font-weight: 500; color: var(--secondary-color); padding: 0.75rem 1rem; }
-    .sidebar .nav-link.active { color: var(--primary-color); background-color: #e9ecef; border-left: 4px solid var(--primary-color); }
-    body.dark-mode .sidebar .nav-link.active { background-color: #333; }
-
-    /* Main Content */
-    main { 
-    /* Increased top padding to push content below the fixed navbar (which is ~48px tall) */
-    padding-top: 3rem !important; 
-    padding-bottom: 2rem; /* Add some bottom spacing too */
-}
-
-    /* Dashboard Cards */
-    .stat-card {
-        border: none;
-        border-radius: 10px;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s;
-    }
-    .stat-card:hover { transform: translateY(-3px); }
-    .stat-icon { font-size: 2rem; color: var(--primary-color); }
-
-    /* Microcopy/Toast */
-    .snackbar {
-        visibility: hidden; 
-        min-width: 250px; 
-        background-color: #333; 
-        color: #fff; 
-        text-align: center; 
-        border-radius: 2px; 
-        padding: 16px; 
-        position: fixed; 
-        z-index: 9999; 
-        left: 50%; 
-        transform: translateX(-50%);
-        bottom: 30px; 
-    }
-
-    .snackbar.show { visibility: visible; -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-
-    @-webkit-keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
-    @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
-    @-webkit-keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
-    @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
-    
-    .table-responsive { overflow-x: auto; }
-</style>
+<nav id="sidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-light">
+    <div class="position-sticky pt-3">
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-1 mb-1 text-muted">
+            <span>Fin-Track</span>
+        </h6>
+        <ul class="nav flex-column" id="nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" data-tab="dashboard">
+                    <i class="fas fa-home me-2"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-tab="transactions">
+                    <i class="fas fa-exchange-alt me-2"></i> Transactions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-tab="creditCards">
+                    <i class="fas fa-credit-card me-2"></i> Credit Cards
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-tab="savingsGoals">
+                    <i class="fas fa-piggy-bank me-2"></i> Savings Goals
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-tab="reminders">
+                    <i class="fas fa-bell me-2"></i> Reminders
+                </a>
+            </li>
+        </ul>
+        
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+            <span>Quick Actions</span>
+        </h6>
+        <ul class="nav flex-column mb-2">
+            <li class="nav-item">
+                <a class="nav-link quick-action" href="#" data-action="addTransaction">
+                    <i class="fas fa-plus me-2"></i> Add Transaction
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link quick-action" href="#" data-action="addGoal">
+                    <i class="fas fa-plus me-2"></i> Add Goal
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link quick-action" href="#" data-action="addReminder">
+                    <i class="fas fa-plus me-2"></i> Add Reminder
+                </a>
+            </li>
+        </ul>
+        
+        <div class="px-3 mt-auto pt-3 border-top">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="darkModeToggle">
+                <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
+            </div>
+        </div>
+    </div>
+</nav>
