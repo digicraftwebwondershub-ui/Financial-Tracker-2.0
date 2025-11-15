@@ -345,6 +345,14 @@
             return;
         }
 
+        const categoryColors = {
+            'Emergency Fund': 'danger',
+            'Down Payment': 'primary',
+            'Vacation': 'info',
+            'Investment': 'success',
+            'Other': 'secondary'
+        };
+
         data.forEach(g => {
             const target = g.TARGETAMOUNT || 0;
             const saved = g.SAVEDAMOUNT || 0;
@@ -353,14 +361,22 @@
             const remaining = target - saved;
             const weeklySavings = g.weeklySavingsNeeded || 0;
 
+            const categoryColor = categoryColors[g.CATEGORY] || 'secondary';
+            let progressBarColor = 'bg-danger';
+            if (progressPercent > 75) {
+                progressBarColor = 'bg-success';
+            } else if (progressPercent > 25) {
+                progressBarColor = 'bg-warning';
+            }
+
             const cardHtml = `
                 <div class="col-lg-6">
-                    <div class="card savings-goal-widget">
+                    <div class="card savings-goal-widget border-${categoryColor}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <h5 class="card-title">${g.GOALNAME}</h5>
-                                    <span class="badge bg-info">${g.CATEGORY}</span>
+                                    <span class="badge bg-${categoryColor}">${g.CATEGORY}</span>
                                 </div>
                                 <span class="badge bg-dark progress-badge">${progressPercent}%</span>
                             </div>
@@ -369,7 +385,7 @@
                                 <p class="card-text text-muted">Target: ${formatCurrency(target)}</p>
                             </div>
                             <div class="progress mt-1 mb-3" style="height: 10px;">
-                                <div class="progress-bar bg-primary" role="progressbar" style="width: ${progressPercent}%;" aria-valuenow="${progressPercent}" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress-bar ${progressBarColor}" role="progressbar" style="width: ${progressPercent}%;" aria-valuenow="${progressPercent}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                             <p class="card-text small text-muted">
                                 ${formatCurrency(remaining)} remaining | Due: ${new Date(g.TARGETDATE).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
