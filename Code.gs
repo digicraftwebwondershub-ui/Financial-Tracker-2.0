@@ -293,7 +293,9 @@ function getDashboardData() {
         balance: balance,
         limit: limit,
         usage: limit > 0 ? (balance / limit) : 0,
-        id: c.CARD_ID
+        id: c.CARD_ID,
+        apr: c.APR,
+        dueDate: c.DUEDATE
       };
     });
     
