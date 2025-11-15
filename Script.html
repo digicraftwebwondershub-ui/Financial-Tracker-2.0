@@ -262,27 +262,74 @@
     }
     
     function loadCreditCards() { loadAndRender('loadCreditCards', renderCreditCards, 'Credit Cards'); }
+
     function renderCreditCards(data) {
-        const tableBody = document.querySelector('#credit-cards-table tbody');
-        tableBody.innerHTML = '';
+        const container = document.getElementById('credit-cards-container');
+        container.innerHTML = '';
+
+        if (data.length === 0) {
+            container.innerHTML = '<div class="col-12"><p class="text-muted text-center">No credit cards added yet. Click "Add Credit Card" to get started.</p></div>';
+            toggleLoading(false);
+            return;
+        }
+
         data.forEach(c => {
-            const usage = c.LIMIT > 0 ? c.BALANCE / c.LIMIT : 0;
-            const usageClass = usage > 0.75 ? 'bg-danger' : usage > 0.5 ? 'bg-warning' : 'bg-success';
-            const row = `
-                <tr>
-                    <td>${c.CARD_ID}</td>
-                    <td>${c.CARDNAME}</td>
-                    <td>${c.BANKNAME}</td>
-                    <td>${formatCurrency(c.LIMIT)}</td>
-                    <td>${formatCurrency(c.BALANCE)}</td>
-                    <td><span class="badge ${usageClass}">${formatPercent(usage)}</span></td>
-                    <td>${new Date(c.DUEDATE).toLocaleDateString()}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="fas fa-edit"></i></button>
-                    </td>
-                </tr>`;
-            tableBody.innerHTML += row;
+            const limit = c.LIMIT || 0;
+            const balance = c.BALANCE || 0;
+            const usage = limit > 0 ? (balance / limit) : 0;
+            const usagePercent = Math.round(usage * 100);
+            
+            // Determine card border color
+            let borderColorClass = 'border-primary'; // Default blue
+            if (usage > 0.75) {
+                borderColorClass = 'border-danger'; // High usage
+            } else if (balance > 0 && usage <= 0.75) {
+                borderColorClass = 'border-warning'; // Moderate usage with balance
+            } else if (balance === 0) {
+                borderColorClass = 'border-success'; // Paid off
+            }
+
+            // Determine dynamic note
+            const dueDate = new Date(c.DUEDATE);
+            const today = new Date();
+            const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+            let note = '';
+            if (balance > 0 && daysUntilDue > 0) {
+                note = `<p class="card-text small text-success mb-0"><i class="fas fa-check-circle me-1"></i> Your next bill is due in ${daysUntilDue} days — you've got this!</p>`;
+            } else if (balance > 0 && daysUntilDue <= 0) {
+                note = `<p class="card-text small text-danger mb-0"><i class="fas fa-exclamation-triangle me-1"></i> Your bill is overdue. Please make a payment.</p>`;
+            } else {
+                 note = `<p class="card-text small text-muted mb-0"><i class="fas fa-star me-1"></i> No missed payments this month. Keep your streak!</p>`;
+            }
+
+            const cardHtml = `
+                <div class="col-lg-6">
+                    <div class="card credit-card-widget ${borderColorClass}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="card-title mb-0">${c.CARDNAME} (${c.BANKNAME})</h5>
+                                <span class="badge usage-badge-pill" style="background-color: ${borderColorClass.replace('border', 'bg')}">${usagePercent}%</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <p class="card-text mb-2">Balance: <strong>${formatCurrency(balance)}</strong></p>
+                                <p class="card-text text-muted">Limit: ${formatCurrency(limit)}</p>
+                            </div>
+                            <div class="progress mb-3" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" style="width: ${usagePercent}%; background-color: ${borderColorClass.replace('border', 'var(--bs')});" aria-valuenow="${usagePercent}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <p class="card-text small text-muted mb-2">
+                                APR: ${(c.APR * 100).toFixed(3)}% | 
+                                Due: ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} | 
+                                Statement: ${new Date(c.STATEMENTDATE).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </p>
+                            ${note}
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += cardHtml;
         });
+
         toggleLoading(false);
     }
 
