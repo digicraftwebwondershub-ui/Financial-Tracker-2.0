@@ -280,29 +280,11 @@ function getDashboardData() {
       }
     });
 
-    // 2. Credit Card calculations (Live from transactions)
-    const cardBalances = {};
-    transactions.forEach(t => {
-      const cardId = t.ACCOUNT;
-      if (cardId && cardId.startsWith('CARD-')) {
-        if (!cardBalances[cardId]) {
-          cardBalances[cardId] = 0;
-        }
-        const amount = t.AMOUNT || 0;
-        // A payment reduces the balance, any other expense increases it.
-        if (t.CATEGORY === 'Credit Card Payment') {
-          cardBalances[cardId] -= amount;
-        } else if (t.TYPE === 'Expense') {
-          cardBalances[cardId] += amount;
-        }
-      }
-    });
-
+    // 2. Credit Card calculations
+    // The `cards` object from `loadCreditCards()` now contains live balances.
     const cardStats = cards.map(c => {
       const limit = c.LIMIT || 0;
-      // Use the live calculated balance, or 0 if no transactions exist for it.
-      const balance = cardBalances[c.CARD_ID] || 0;
-
+      const balance = c.BALANCE || 0;
       totalCreditLimit += limit;
       totalCardBalance += balance;
       
@@ -333,6 +315,7 @@ function getDashboardData() {
     const netIncome = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? (totalSavingsDeposits / totalIncome) : 0;
     const creditUsage = totalCreditLimit > 0 ? (totalCardBalance / totalCreditLimit) : 0;
+    const availableCredit = totalCreditLimit - totalCardBalance;
 
     Logger.log('Dashboard data calculated successfully.');
     return {
@@ -341,6 +324,7 @@ function getDashboardData() {
       totalIncome: totalIncome,
       savingsRate: savingsRate,
       creditUsage: creditUsage,
+      availableCredit: availableCredit,
       cardStats: cardStats,
       goalsProgress: goalsProgress,
       motivationalMessage: netIncome >= 0 ? 
@@ -351,7 +335,7 @@ function getDashboardData() {
     Logger.log(`FATAL ERROR in getDashboardData: ${e.message}`);
     // Return empty data structure to prevent front-end crash
     return {
-      netIncome: 0, totalExpenses: 0, totalIncome: 0, savingsRate: 0, creditUsage: 0, cardStats: [], goalsProgress: [], motivationalMessage: "Data failed to load. Check Apps Script logs."
+      netIncome: 0, totalExpenses: 0, totalIncome: 0, savingsRate: 0, creditUsage: 0, availableCredit: 0, cardStats: [], goalsProgress: [], motivationalMessage: "Data failed to load. Check Apps Script logs."
     };
   }
 }

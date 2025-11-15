@@ -77,12 +77,20 @@
     }
 
     function renderDashboard(data) {
-        // 1. KPI Cards
-        document.getElementById('net-income').textContent = formatCurrency(data.netIncome);
-        document.getElementById('total-expenses').textContent = formatCurrency(data.totalExpenses);
-        document.getElementById('savings-rate').textContent = formatPercent(data.savingsRate);
-        document.getElementById('credit-usage').textContent = formatPercent(data.creditUsage);
-        
+        // 1. KPI Cards - New Structure
+        const netIncomeCard = document.getElementById('net-income');
+        netIncomeCard.querySelector('.card-value').textContent = formatCurrency(data.netIncome);
+
+        const expensesCard = document.getElementById('total-expenses');
+        expensesCard.querySelector('.card-value').textContent = formatCurrency(data.totalExpenses);
+
+        const savingsCard = document.getElementById('savings-rate');
+        savingsCard.querySelector('.card-value').textContent = formatPercent(data.savingsRate);
+
+        const creditCard = document.getElementById('credit-usage');
+        creditCard.querySelector('.card-value').textContent = formatPercent(data.creditUsage);
+        creditCard.querySelector('.card-subtitle').textContent = `${formatCurrency(data.availableCredit)} available`;
+
         // 2. Microcopy
         document.getElementById('motivational-microcopy').textContent = data.motivationalMessage;
 
