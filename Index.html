@@ -162,12 +162,16 @@
                 </div>
                 
                 <div id="savingsGoals" class="tab-content" style="display:none;">
-                    <h2>Savings Goals</h2>
-                    <div class="d-flex justify-content-end mb-3">
-                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addGoalModal"><i class="fas fa-plus"></i> Add Goal</button>
-                         <button class="btn btn-outline-secondary" onclick="exportData('Goals')"><i class="fas fa-download"></i> Export CSV</button>
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2"><i class="fas fa-bullseye me-2"></i>Savings Goals</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addGoalModal"><i class="fas fa-plus"></i> Add Goal</button>
+                            <button class="btn btn-outline-secondary" onclick="exportData('Goals')"><i class="fas fa-download"></i> Export CSV</button>
+                        </div>
                     </div>
-                    <div class="row g-4" id="goals-card-view"></div>
+                    <div class="row g-4" id="savings-goals-container">
+                        <!-- Savings goal cards will be rendered here -->
+                    </div>
                 </div>
 
                 <div id="reminders" class="tab-content" style="display:none;">
