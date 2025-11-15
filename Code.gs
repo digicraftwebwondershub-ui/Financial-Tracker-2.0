@@ -38,6 +38,16 @@ function getSheet(sheetName) {
   return SS.getSheetByName(sheetName);
 }
 
+/**
+ * Creates a custom menu in the spreadsheet UI when the sheet is opened.
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+      .createMenu('Fin-Track Tools')
+      .addItem('Recalculate Card Balances', 'recalculateAndUpdateCardBalances')
+      .addToUi();
+}
+
 // --- ID & Config Functions ---
 
 /**
@@ -237,10 +247,29 @@ function getDashboardData() {
       }
     });
 
-    // 2. Credit Card calculations
+    // 2. Credit Card calculations (Live from transactions)
+    const cardBalances = {};
+    transactions.forEach(t => {
+      const cardId = t.ACCOUNT;
+      if (cardId && cardId.startsWith('CARD-')) {
+        if (!cardBalances[cardId]) {
+          cardBalances[cardId] = 0;
+        }
+        const amount = t.AMOUNT || 0;
+        // A payment reduces the balance, any other expense increases it.
+        if (t.CATEGORY === 'Credit Card Payment') {
+          cardBalances[cardId] -= amount;
+        } else if (t.TYPE === 'Expense') {
+          cardBalances[cardId] += amount;
+        }
+      }
+    });
+
     const cardStats = cards.map(c => {
       const limit = c.LIMIT || 0;
-      const balance = c.BALANCE || 0;
+      // Use the live calculated balance, or 0 if no transactions exist for it.
+      const balance = cardBalances[c.CARD_ID] || 0;
+
       totalCreditLimit += limit;
       totalCardBalance += balance;
       
@@ -291,6 +320,90 @@ function getDashboardData() {
     return {
       netIncome: 0, totalExpenses: 0, totalIncome: 0, savingsRate: 0, creditUsage: 0, cardStats: [], goalsProgress: [], motivationalMessage: "Data failed to load. Check Apps Script logs."
     };
+  }
+}
+
+/**
+ * RECALCULATION FUNCTION: Iterates through all transactions to
+ * accurately update each credit card's balance and last payment info.
+ */
+function recalculateAndUpdateCardBalances() {
+  const sheetUi = SpreadsheetApp.getUi();
+  sheetUi.alert('Starting card balance recalculation... This may take a moment.');
+
+  try {
+    const transactions = loadData('Transactions');
+    const cards = loadData('Credit_Cards');
+    const cardsSheet = getSheet('Credit_Cards');
+
+    if (!cardsSheet || cards.length === 0) {
+      sheetUi.alert('No credit cards found to update.');
+      return;
+    }
+
+    // Create a map for quick lookups
+    const cardUpdates = {};
+    cards.forEach(card => {
+      cardUpdates[card.CARD_ID] = {
+        balance: 0,
+        lastPayment: 0,
+        lastPaymentDate: null,
+        rowNum: -1 // We'll need to find this later
+      };
+    });
+
+    // 1. Process all transactions
+    transactions.forEach(t => {
+      const cardId = t.ACCOUNT;
+      if (cardUpdates[cardId]) {
+        const amount = t.AMOUNT || 0;
+
+        if (t.TYPE === 'Expense') {
+          cardUpdates[cardId].balance += amount;
+        } else if (t.CATEGORY === 'Credit Card Payment') {
+          // Payments should also be treated as expenses against the card balance from a transactional view
+          cardUpdates[cardId].balance -= amount; // Payment reduces the balance
+
+          // Check if this is the most recent payment
+          const paymentDate = new Date(t.DATE);
+          if (!cardUpdates[cardId].lastPaymentDate || paymentDate > cardUpdates[cardId].lastPaymentDate) {
+            cardUpdates[cardId].lastPayment = amount;
+            cardUpdates[cardId].lastPaymentDate = paymentDate;
+          }
+        }
+      }
+    });
+
+    // 2. Prepare data for batch update
+    const [headers, ...rows] = cardsSheet.getDataRange().getValues();
+    const balanceColIndex = headers.indexOf('BALANCE');
+    const lastPaymentColIndex = headers.indexOf('LASTPAYMENT');
+    const lastPaymentDateColIndex = headers.indexOf('LASTPAYMENTDATE');
+
+    if (balanceColIndex === -1 || lastPaymentColIndex === -1 || lastPaymentDateColIndex === -1) {
+        throw new Error('Could not find required columns (BALANCE, LASTPAYMENT, LASTPAYMENTDATE) in Credit_Cards sheet.');
+    }
+
+    const updateRangeData = [];
+    rows.forEach((row, i) => {
+        const cardId = row[0];
+        if (cardUpdates[cardId]) {
+            const update = cardUpdates[cardId];
+            row[balanceColIndex] = update.balance;
+            row[lastPaymentColIndex] = update.lastPayment;
+            row[lastPaymentDateColIndex] = update.lastPaymentDate ? update.lastPaymentDate.toLocaleDateString('en-US') : '';
+        }
+        updateRangeData.push(row);
+    });
+
+    // 3. Perform the batch update
+    const dataRange = cardsSheet.getRange(2, 1, updateRangeData.length, headers.length);
+    dataRange.setValues(updateRangeData);
+
+    sheetUi.alert('Success! All credit card balances and last payment details have been recalculated and updated.');
+  } catch (e) {
+    Logger.log(`ERROR during recalculation: ${e.toString()}`);
+    sheetUi.alert(`An error occurred: ${e.message}. Please check the logs.`);
   }
 }
 
