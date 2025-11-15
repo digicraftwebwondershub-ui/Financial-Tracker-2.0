@@ -130,6 +130,27 @@
         color: #fff;
     }
 
+    /* Savings Goal Widget Styling */
+    .savings-goal-widget {
+        border-radius: 12px;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        border: 1px solid #e9ecef;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .savings-goal-widget:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.1);
+    }
+    .savings-goal-widget .progress-badge {
+        font-size: 0.9rem;
+        font-weight: 600;
+        padding: 0.4em 0.8em;
+        border-radius: 50rem;
+    }
+    body.dark-mode .savings-goal-widget {
+        border-color: #333;
+    }
+
 
     /* Sidebar Styling */
     .sidebar { 
