@@ -30,11 +30,61 @@
             <?!= include('Sidebar') ?>
             
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2" id="page-title">Dashboard</h1>
-                </div>
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2" id="page-title">Dashboard</h1>
+    </div>
 
-                </main>
+    <div id="dashboard" class="tab-content">
+        <div class="row g-4">
+            <div class="col-12">
+                <div id="motivational-microcopy" class="alert alert-info" role="alert">
+                    Motivational message here.
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6"><div class="card stat-card p-3" id="net-income">Net Income Card</div></div>
+            <div class="col-lg-3 col-md-6"><div class="card stat-card p-3" id="total-expenses">Expenses Card</div></div>
+            <div class="col-lg-6">
+                <div class="card p-3"><h5 class="card-title">Credit Card Balances</h5><ul id="card-list" class="list-group list-group-flush"></ul></div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card p-3"><h5 class="card-title">Savings Goals Progress</h5><div id="goals-progress-list"></div></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="transactions" class="tab-content" style="display:none;">
+        <h2>Transactions</h2>
+        <div class="d-flex justify-content-end mb-3">
+             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addTransactionModal"><i class="fas fa-plus"></i> Add Transaction</button>
+        </div>
+        <table class="table" id="transactions-table"><tbody></tbody></table>
+    </div>
+    
+    <div id="creditCards" class="tab-content" style="display:none;">
+        <h2>Credit Cards</h2>
+        <div class="d-flex justify-content-end mb-3">
+             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addCreditCardModal"><i class="fas fa-plus"></i> Add Card</button>
+        </div>
+        <table class="table" id="credit-cards-table"><tbody></tbody></table>
+    </div>
+    
+    <div id="savingsGoals" class="tab-content" style="display:none;">
+        <h2>Savings Goals</h2>
+        <div class="d-flex justify-content-end mb-3">
+             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addGoalModal"><i class="fas fa-plus"></i> Add Goal</button>
+        </div>
+        <div class="row g-4" id="goals-card-view"></div>
+    </div>
+
+    <div id="reminders" class="tab-content" style="display:none;">
+        <h2>Reminders</h2>
+        <div class="d-flex justify-content-end mb-3">
+             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addReminderModal"><i class="fas fa-plus"></i> Add Reminder</button>
+        </div>
+        <table class="table" id="reminders-table"><tbody></tbody></table>
+    </div>
+
+    </main>
         </div>
     </div>
 
