@@ -212,6 +212,7 @@ function loadData(sheetName) {
  */
 function loadTransactions() { return loadData('Transactions'); }
 
+function loadCreditCards() {
 function loadCreditCards() { 
   const cards = loadData('Credit_Cards');
   const transactions = loadData('Transactions');
