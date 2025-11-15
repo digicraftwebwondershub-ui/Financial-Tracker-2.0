@@ -1,4 +1,3 @@
-
 // --- Global Utility Functions ---
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 
