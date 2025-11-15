@@ -304,12 +304,15 @@ function getDashboardData() {
       const target = g.TARGETAMOUNT || 0;
       const saved = g.SAVEDAMOUNT || 0;
       const progress = target > 0 ? (saved / target) : 0;
+      const remaining = target - saved;
       
       return {
         name: g.GOALNAME,
         saved: saved,
         target: target,
         progress: progress,
+        remaining: remaining,
+        targetDate: g.TARGETDATE,
         priority: g.PRIORITYLEVEL
       };
     });
