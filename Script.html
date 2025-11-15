@@ -350,7 +350,7 @@
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
         });
         
-        // Tab Navigation Listener
+       // Tab Navigation Listener
         document.querySelectorAll('#nav-tabs .nav-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -364,6 +364,7 @@
                     }
                 }
             });
+          });
         
         // Quick Action Links Listener
         document.querySelectorAll('.quick-action').forEach(link => {
