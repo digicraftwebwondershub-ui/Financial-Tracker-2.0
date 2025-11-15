@@ -30,63 +30,297 @@
             <?!= include('Sidebar') ?>
             
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h2" id="page-title">Dashboard</h1>
-    </div>
-
-    <div id="dashboard" class="tab-content">
-        <div class="row g-4">
-            <div class="col-12">
-                <div id="motivational-microcopy" class="alert alert-info" role="alert">
-                    Motivational message here.
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2" id="page-title">Dashboard</h1>
                 </div>
+
+                <div id="dashboard" class="tab-content">
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <div id="motivational-microcopy" class="alert alert-info" role="alert">
+                                Motivational message here.
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-3 col-md-6">
+                            <div class="card stat-card p-3 text-light" id="net-income">Net Income Card</div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="card stat-card p-3 text-light" id="total-expenses">Expenses Card</div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card p-3">
+                                <h5 class="card-title text-light">Credit Card Balances</h5>
+                                <ul id="card-list" class="list-group list-group-flush"></ul>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card p-3">
+                                <h5 class="card-title text-light">Savings Goals Progress</h5>
+                                <div id="goals-progress-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="transactions" class="tab-content" style="display:none;">
+                    <h2>Transactions</h2>
+                    <div class="d-flex justify-content-end mb-3">
+                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addTransactionModal"><i class="fas fa-plus"></i> Add Transaction</button>
+                         <button class="btn btn-outline-secondary" onclick="exportData('Transactions')"><i class="fas fa-download"></i> Export CSV</button>
+                    </div>
+                    <table class="table" id="transactions-table"><tbody></tbody></table>
+                </div>
+                
+                <div id="creditCards" class="tab-content" style="display:none;">
+                    <h2>Credit Cards</h2>
+                    <div class="d-flex justify-content-end mb-3">
+                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addCreditCardModal"><i class="fas fa-plus"></i> Add Card</button>
+                         <button class="btn btn-outline-secondary" onclick="exportData('Credit_Cards')"><i class="fas fa-download"></i> Export CSV</button>
+                    </div>
+                    <table class="table" id="credit-cards-table"><tbody></tbody></table>
+                </div>
+                
+                <div id="savingsGoals" class="tab-content" style="display:none;">
+                    <h2>Savings Goals</h2>
+                    <div class="d-flex justify-content-end mb-3">
+                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addGoalModal"><i class="fas fa-plus"></i> Add Goal</button>
+                         <button class="btn btn-outline-secondary" onclick="exportData('Goals')"><i class="fas fa-download"></i> Export CSV</button>
+                    </div>
+                    <div class="row g-4" id="goals-card-view"></div>
+                </div>
+
+                <div id="reminders" class="tab-content" style="display:none;">
+                    <h2>Reminders</h2>
+                    <div class="d-flex justify-content-end mb-3">
+                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addReminderModal"><i class="fas fa-plus"></i> Add Reminder</button>
+                         <button class="btn btn-outline-secondary" onclick="exportData('Reminders')"><i class="fas fa-download"></i> Export CSV</button>
+                    </div>
+                    <table class="table" id="reminders-table"><tbody></tbody></table>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addTransactionModal" tabindex="-1" aria-labelledby="addTransactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addTransactionModalLabel">Add New Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="transactionForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="trans-date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="trans-date" name="DATE" required value="<?= new Date().toISOString().slice(0, 10) ?>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="trans-type" class="form-label">Type</label>
+                            <select class="form-select" id="trans-type" name="TYPE" required>
+                                <option value="Expense">Expense</option>
+                                <option value="Income">Income</option>
+                                <option value="Transfer">Transfer</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="trans-category" class="form-label">Category</label>
+                            <select class="form-select" id="trans-category" name="CATEGORY" required>
+                                <option value="Groceries">Groceries</option>
+                                <option value="Salary">Salary</option>
+                                <option value="Credit Card Payment">Credit Card Payment</option>
+                                <option value="Savings Deposit">Savings Deposit</option>
+                                <option value="Bills">Bills</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="trans-amount" class="form-label">Amount (₱)</label>
+                            <input type="number" step="0.01" class="form-control" id="trans-amount" name="AMOUNT" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="trans-desc" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="trans-desc" name="DESCRIPTION">
+                        </div>
+                        <div class="mb-3">
+                            <label for="trans-method" class="form-label">Payment Method</label>
+                            <select class="form-select" id="trans-method" name="PAYMENTMETHOD">
+                                <option value="Cash">Cash</option>
+                                <option value="Credit Card">Credit Card</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option option="Digital Wallet">Digital Wallet</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="trans-account-group" style="display:none;">
+                            <label for="trans-account" class="form-label">Credit Card / Account ID</label>
+                            <input type="text" class="form-control" id="trans-account" name="ACCOUNT" placeholder="e.g., CARD-2001">
+                        </div>
+                         <div class="mb-3" id="trans-related-group" style="display:none;">
+                            <label for="trans-related" class="form-label">Goal ID (for Savings Deposit)</label>
+                            <input type="text" class="form-control" id="trans-related" name="RELATED_ID" placeholder="e.g., GOAL-3001">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Transaction</button>
+                    </div>
+                </form>
             </div>
-            <div class="col-lg-3 col-md-6"><div class="card stat-card p-3" id="net-income">Net Income Card</div></div>
-<div class="col-lg-3 col-md-6"><div class="card stat-card p-3" id="total-expenses">Expenses Card</div></div>
-<div class="col-lg-6">
-    <div class="card p-3"><h5 class="card-title">Credit Card Balances</h5><ul id="card-list" class="list-group list-group-flush"></ul></div>
-</div>
-<div class="col-lg-6">
-    <div class="card p-3"><h5 class="card-title">Savings Goals Progress</h5><div id="goals-progress-list"></div></div>
-</div>
         </div>
     </div>
     
-    <div id="transactions" class="tab-content" style="display:none;">
-        <h2>Transactions</h2>
-        <div class="d-flex justify-content-end mb-3">
-             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addTransactionModal"><i class="fas fa-plus"></i> Add Transaction</button>
+    <div class="modal fade" id="addCreditCardModal" tabindex="-1" aria-labelledby="addCreditCardModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addCreditCardModalLabel">Add New Credit Card</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="creditCardForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="card-name" class="form-label">Card Name</label>
+                            <input type="text" class="form-control" id="card-name" name="CARDNAME" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="bank-name" class="form-label">Bank Name</label>
+                            <input type="text" class="form-control" id="bank-name" name="BANKNAME" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="card-limit" class="form-label">Limit (₱)</label>
+                            <input type="number" step="0.01" class="form-control" id="card-limit" name="LIMIT" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="card-balance" class="form-label">Current Balance (₱)</label>
+                            <input type="number" step="0.01" class="form-control" id="card-balance" name="BALANCE" value="0.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="card-apr" class="form-label">APR (%)</label>
+                            <input type="number" step="0.1" class="form-control" id="card-apr" name="APR" value="0.0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="card-due-date" class="form-label">Due Date (DD/MM/YYYY)</label>
+                            <input type="date" class="form-control" id="card-due-date" name="DUEDATE">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Card</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <table class="table" id="transactions-table"><tbody></tbody></table>
     </div>
     
-    <div id="creditCards" class="tab-content" style="display:none;">
-        <h2>Credit Cards</h2>
-        <div class="d-flex justify-content-end mb-3">
-             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addCreditCardModal"><i class="fas fa-plus"></i> Add Card</button>
+    <div class="modal fade" id="addGoalModal" tabindex="-1" aria-labelledby="addGoalModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addGoalModalLabel">Add New Savings Goal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="goalForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="goal-name" class="form-label">Goal Name</label>
+                            <input type="text" class="form-control" id="goal-name" name="GOALNAME" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="goal-category" class="form-label">Category</label>
+                            <select class="form-select" id="goal-category" name="CATEGORY" required>
+                                <option value="Emergency Fund">Emergency Fund</option>
+                                <option value="Down Payment">Down Payment</option>
+                                <option value="Vacation">Vacation</option>
+                                <option value="Investment">Investment</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="goal-target" class="form-label">Target Amount (₱)</label>
+                            <input type="number" step="0.01" class="form-control" id="goal-target" name="TARGETAMOUNT" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="goal-saved" class="form-label">Saved Amount (₱)</label>
+                            <input type="number" step="0.01" class="form-control" id="goal-saved" name="SAVEDAMOUNT" value="0.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="goal-target-date" class="form-label">Target Date</label>
+                            <input type="date" class="form-control" id="goal-target-date" name="TARGETDATE">
+                        </div>
+                        <div class="mb-3">
+                            <label for="goal-priority" class="form-label">Priority Level</label>
+                            <select class="form-select" id="goal-priority" name="PRIORITYLEVEL">
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Create Goal</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <table class="table" id="credit-cards-table"><tbody></tbody></table>
-    </div>
-    
-    <div id="savingsGoals" class="tab-content" style="display:none;">
-        <h2>Savings Goals</h2>
-        <div class="d-flex justify-content-end mb-3">
-             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addGoalModal"><i class="fas fa-plus"></i> Add Goal</button>
-        </div>
-        <div class="row g-4" id="goals-card-view"></div>
     </div>
 
-    <div id="reminders" class="tab-content" style="display:none;">
-        <h2>Reminders</h2>
-        <div class="d-flex justify-content-end mb-3">
-             <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addReminderModal"><i class="fas fa-plus"></i> Add Reminder</button>
+    <div class="modal fade" id="addReminderModal" tabindex="-1" aria-labelledby="addReminderModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addReminderModalLabel">Add New Reminder</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="reminderForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="reminder-desc" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="reminder-desc" name="DESCRIPTION" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reminder-category" class="form-label">Category</label>
+                            <select class="form-select" id="reminder-category" name="CATEGORY" required>
+                                <option value="Electricity Bill">Electricity Bill</option>
+                                <option value="Rent">Rent</option>
+                                <option value="Loan Payment">Loan Payment</option>
+                                <option value="Credit Card Bill">Credit Card Bill</option>
+                                <option value="Other Bill">Other Bill</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reminder-amount" class="form-label">Amount (₱)</label>
+                            <input type="number" step="0.01" class="form-control" id="reminder-amount" name="AMOUNT" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reminder-due-date" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="reminder-due-date" name="DUEDATE" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reminder-channel" class="form-label">Payment Channel</label>
+                            <input type="text" class="form-control" id="reminder-channel" name="PAYMENTCHANNEL">
+                        </div>
+                        <div class="mb-3">
+                            <label for="reminder-recurring" class="form-label">Recurring</label>
+                            <select class="form-select" id="reminder-recurring" name="RECURRING">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes (Monthly reset)</option>
+                            </select>
+                        </div>
+                        <input type="hidden" name="STATUS" value="Upcoming">
+                        <input type="hidden" name="DAYSLEFT" value="">
+                        <input type="hidden" name="AUTONOTIFY" value="No">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Reminder</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <table class="table" id="reminders-table"><tbody></tbody></table>
     </div>
 
-    </main>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <?!= include('Script') ?>
