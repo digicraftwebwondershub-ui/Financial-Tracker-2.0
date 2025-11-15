@@ -1,0 +1,405 @@
+<script>
+    // Global State
+    let currentTab = 'dashboard';
+    const tabDataLoaders = {
+        'dashboard': loadDashboard,
+        'transactions': loadTransactions,
+        'creditCards': loadCreditCards,
+        'savingsGoals': loadGoals,
+        'reminders': loadReminders
+    };
+    const modalMap = {
+        'addTransaction': '#addTransactionModal',
+        'addGoal': '#addGoalModal',
+        'addReminder': '#addReminderModal'
+    };
+    
+    // --- Utility Functions ---
+
+    /** Shows a spinner when a backend call is active. */
+    function toggleLoading(show) {
+        const spinner = document.getElementById('loading-spinner');
+        if (spinner) {
+            spinner.style.display = show ? 'inline-block' : 'none';
+        }
+    }
+    
+    /** Shows a toast notification/snackbar. */
+    function showSnackbar(message, type = 'info') {
+        const snackbar = document.getElementById('snackbar');
+        snackbar.textContent = message;
+        snackbar.className = `snackbar show bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'}`;
+        setTimeout(() => { 
+            snackbar.className = snackbar.className.replace("show", ""); 
+        }, 3000);
+    }
+
+    /** Formats a number to currency (Philippine Peso). */
+    function formatCurrency(number) {
+        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(number);
+    }
+
+    /** Formats a number to percentage. */
+    function formatPercent(number) {
+        return new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(number);
+    }
+
+    // --- Core App Logic ---
+
+    /** Switches the active tab in the UI. */
+    function switchTab(tabId) {
+        currentTab = tabId;
+        // 1. Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        // 2. Show the active tab content
+        document.getElementById(tabId).style.display = 'block';
+        // 3. Update the main header title
+        document.getElementById('page-title').textContent = document.querySelector(`a[data-tab="${tabId}"]`).textContent.trim();
+
+        // 4. Update sidebar visual state
+        document.querySelectorAll('#nav-tabs .nav-link').forEach(link => link.classList.remove('active'));
+        document.querySelector(`a[data-tab="${tabId}"]`).classList.add('active');
+
+        // 5. Load data
+        if (tabDataLoaders[tabId]) {
+            tabDataLoaders[tabId]();
+        }
+    }
+    
+    // --- Data Loaders & Renderers ---
+
+    function loadDashboard() {
+        toggleLoading(true);
+        google.script.run
+            .withSuccessHandler(renderDashboard)
+            .withFailureHandler(e => { showSnackbar('Error loading dashboard: ' + e, 'error'); toggleLoading(false); })
+            .getDashboardData();
+    }
+
+    function renderDashboard(data) {
+        // 1. KPI Cards
+        document.getElementById('net-income').textContent = formatCurrency(data.netIncome);
+        document.getElementById('total-expenses').textContent = formatCurrency(data.totalExpenses);
+        document.getElementById('savings-rate').textContent = formatPercent(data.savingsRate);
+        document.getElementById('credit-usage').textContent = formatPercent(data.creditUsage);
+        
+        // 2. Microcopy
+        document.getElementById('motivational-microcopy').textContent = data.motivationalMessage;
+
+        // 3. Credit Card List
+        const cardList = document.getElementById('card-list');
+        cardList.innerHTML = '';
+        if (data.cardStats.length === 0) {
+            cardList.innerHTML = `<li class="list-group-item text-muted">No credit cards added yet.</li>`;
+        } else {
+            data.cardStats.forEach(card => {
+                const usageColor = card.usage > 0.5 ? 'text-danger' : card.usage > 0.3 ? 'text-warning' : 'text-success';
+                const item = `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${card.name} 
+                        <span class="${usageColor} fw-bold">${formatCurrency(card.balance)}</span>
+                        <span class="badge bg-secondary">${formatPercent(card.usage)} Used</span>
+                    </li>`;
+                cardList.innerHTML += item;
+            });
+        }
+
+        // 4. Goals Progress List
+        const goalsList = document.getElementById('goals-progress-list');
+        goalsList.innerHTML = '';
+        if (data.goalsProgress.length === 0) {
+            goalsList.innerHTML = `<p class="text-muted">No savings goals set yet.</p>`;
+        } else {
+            data.goalsProgress.forEach(goal => {
+                const progress = goal.target > 0 ? goal.saved / goal.target : 0;
+                const progressValue = Math.min(Math.round(progress * 100), 100);
+                const progressColor = goal.progress >= 1 ? 'bg-success' : goal.priority === 'High' ? 'bg-danger' : 'bg-primary';
+                const message = progressValue === 100 ? 'Goal Reached!' : `You’re ${formatCurrency(goal.target - goal.saved)} away!`;
+                const item = `
+                    <div class="mb-3">
+                        <h6 class="mb-1">${goal.name} <span class="badge bg-secondary">${formatCurrency(goal.saved)} / ${formatCurrency(goal.target)}</span></h6>
+                        <div class="progress" style="height: 15px;">
+                            <div class="progress-bar ${progressColor}" role="progressbar" style="width: ${progressValue}%;" aria-valuenow="${progressValue}" aria-valuemin="0" aria-valuemax="100">
+                                ${progressValue}%
+                            </div>
+                        </div>
+                        <small class="text-muted">${message}</small>
+                    </div>`;
+                goalsList.innerHTML += item;
+            });
+        }
+
+        toggleLoading(false);
+    }
+
+    // Generic Load and Render function
+    function loadAndRender(loadFunction, renderFunction, sheetName) {
+        toggleLoading(true);
+        google.script.run
+            .withSuccessHandler(renderFunction)
+            .withFailureHandler(e => { showSnackbar(`Error loading ${sheetName}: ` + e, 'error'); toggleLoading(false); })
+            [loadFunction]();
+    }
+
+    function loadTransactions() { loadAndRender('loadTransactions', renderTransactions, 'Transactions'); }
+    function renderTransactions(data) {
+        const tableBody = document.querySelector('#transactions-table tbody');
+        tableBody.innerHTML = '';
+        data.forEach(t => {
+            const amountClass = t.TYPE === 'Income' ? 'text-success' : t.TYPE === 'Expense' ? 'text-danger' : 'text-warning';
+            const row = `
+                <tr>
+                    <td>${t.TRANSACTION_ID}</td>
+                    <td>${new Date(t.DATE).toLocaleDateString()}</td>
+                    <td><span class="badge bg-${t.TYPE === 'Income' ? 'success' : t.TYPE === 'Expense' ? 'danger' : 'secondary'}">${t.TYPE}</span></td>
+                    <td>${t.CATEGORY}</td>
+                    <td class="${amountClass} fw-bold">${formatCurrency(t['AMOUNT(₱)'])}</td>
+                    <td>${t.DESCRIPTION}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>`;
+            tableBody.innerHTML += row;
+        });
+        toggleLoading(false);
+    }
+    
+    function loadCreditCards() { loadAndRender('loadCreditCards', renderCreditCards, 'Credit Cards'); }
+    function renderCreditCards(data) {
+        const tableBody = document.querySelector('#credit-cards-table tbody');
+        tableBody.innerHTML = '';
+        data.forEach(c => {
+            const usage = c.LIMIT > 0 ? c.BALANCE / c.LIMIT : 0;
+            const usageClass = usage > 0.75 ? 'bg-danger' : usage > 0.5 ? 'bg-warning' : 'bg-success';
+            const row = `
+                <tr>
+                    <td>${c.CARD_ID}</td>
+                    <td>${c.CARDNAME}</td>
+                    <td>${c.BANKNAME}</td>
+                    <td>${formatCurrency(c.LIMIT)}</td>
+                    <td>${formatCurrency(c.BALANCE)}</td>
+                    <td><span class="badge ${usageClass}">${formatPercent(usage)}</span></td>
+                    <td>${new Date(c.DUEDATE).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>`;
+            tableBody.innerHTML += row;
+        });
+        toggleLoading(false);
+    }
+
+    function loadGoals() { loadAndRender('loadGoals', renderGoals, 'Goals'); }
+    function renderGoals(data) {
+        const goalsView = document.getElementById('goals-card-view');
+        goalsView.innerHTML = '';
+        data.forEach(g => {
+            const progress = g.TARGETAMOUNT > 0 ? g.SAVEDAMOUNT / g.TARGETAMOUNT : 0;
+            const progressValue = Math.min(Math.round(progress * 100), 100);
+            const progressColor = g.PRIORITYLEVEL === 'High' ? 'bg-danger' : g.PRIORITYLEVEL === 'Medium' ? 'bg-warning' : 'bg-info';
+            const daysLeft = g.TARGETDATE ? Math.ceil((new Date(g.TARGETDATE) - new Date()) / (1000 * 60 * 60 * 24)) : 'N/A';
+            
+            const card = `
+                <div class="col-lg-4 col-md-6">
+                    <div class="card stat-card h-100 p-3">
+                        <h5 class="card-title text-primary">${g.GOALNAME} <span class="badge bg-secondary ms-2">${g.CATEGORY}</span></h5>
+                        <p class="card-text mb-1">Target: ${formatCurrency(g.TARGETAMOUNT)}</p>
+                        <p class="card-text fs-4 fw-bold text-success">${formatCurrency(g.SAVEDAMOUNT)} <span class="small text-muted">Saved</span></p>
+                        
+                        <div class="progress mb-2" style="height: 18px;">
+                            <div class="progress-bar ${progressColor}" role="progressbar" style="width: ${progressValue}%;" aria-valuenow="${progressValue}" aria-valuemin="0" aria-valuemax="100">
+                                ${progressValue}%
+                            </div>
+                        </div>
+                        <small class="text-muted">Target Date: ${new Date(g.TARGETDATE).toLocaleDateString()} (${daysLeft} days left)</small>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" title="Deposit"><i class="fas fa-plus"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="fas fa-edit"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            goalsView.innerHTML += card;
+        });
+        toggleLoading(false);
+    }
+    
+    function loadReminders() { loadAndRender('loadReminders', renderReminders, 'Reminders'); }
+    function renderReminders(data) {
+        const tableBody = document.querySelector('#reminders-table tbody');
+        tableBody.innerHTML = '';
+        data.sort((a, b) => {
+            const aDate = new Date(a.DUEDATE);
+            const bDate = new Date(b.DUEDATE);
+            return aDate - bDate;
+        });
+        
+        data.forEach(r => {
+            const daysLeft = r.DAYSLEFT || 0;
+            let statusClass = '';
+            
+            if (r.STATUS === 'Paid') {
+                statusClass = 'bg-success';
+            } else if (daysLeft < 0) {
+                statusClass = 'bg-danger'; // Overdue
+                r.STATUS = 'Overdue'; // Update status text for display
+            } else if (daysLeft <= 7) {
+                statusClass = 'bg-warning'; // Upcoming
+            } else {
+                statusClass = 'bg-info';
+            }
+
+            const row = `
+                <tr>
+                    <td>${r.REMINDER_ID}</td>
+                    <td>${r.DESCRIPTION}</td>
+                    <td>${r.CATEGORY}</td>
+                    <td class="fw-bold">${formatCurrency(r.AMOUNT)}</td>
+                    <td>${new Date(r.DUEDATE).toLocaleDateString()}</td>
+                    <td>${daysLeft}</td>
+                    <td><span class="badge ${statusClass}">${r.STATUS}</span></td>
+                    <td>
+                        ${r.STATUS !== 'Paid' ? 
+                            `<button class="btn btn-sm btn-success me-1" title="Mark Paid" onclick="markReminderPaid('${r.REMINDER_ID}')"><i class="fas fa-check"></i></button>` 
+                            : ''
+                        }
+                        <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>`;
+            tableBody.innerHTML += row;
+        });
+        toggleLoading(false);
+    }
+
+    // --- Action Handlers (Forms & Buttons) ---
+
+    /** Generic function to handle form submission for adding a new record. */
+    function handleFormSubmission(event, sheetName, prefix) {
+        event.preventDefault();
+        toggleLoading(true);
+        
+        const form = event.target;
+        const formData = {};
+        new FormData(form).forEach((value, key) => {
+            formData[key] = value;
+        });
+        
+        google.script.run
+            .withSuccessHandler(result => {
+                showSnackbar(result.message, result.status);
+                form.reset();
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                if (modal) modal.hide();
+                
+                // Refresh the relevant tab data
+                if (currentTab in tabDataLoaders) {
+                    tabDataLoaders[currentTab]();
+                } else {
+                    loadDashboard(); // Default refresh
+                }
+            })
+            .withFailureHandler(e => { showSnackbar('Action Error: ' + e, 'error'); toggleLoading(false); })
+            .addRecord(sheetName, formData, prefix);
+    }
+
+    /** Special handler for marking a reminder as paid. */
+    function markReminderPaid(reminderId) {
+        if (!confirm('Are you sure you want to mark this reminder as paid and create a corresponding transaction?')) {
+            return;
+        }
+        toggleLoading(true);
+        google.script.run
+            .withSuccessHandler(result => {
+                showSnackbar(result.message, result.status);
+                loadReminders(); // Refresh the Reminders tab
+                loadDashboard(); // Dashboard might be affected (e.g., Net Income)
+            })
+            .withFailureHandler(e => { showSnackbar('Payment Error: ' + e, 'error'); toggleLoading(false); })
+            .markReminderPaid(reminderId, {}); // {} is a placeholder for potential form data
+    }
+    
+    /** Extra Feature: Export Data */
+    function exportData(sheetName) {
+        toggleLoading(true);
+        google.script.run
+            .withSuccessHandler(base64Csv => {
+                const link = document.createElement('a');
+                link.href = 'data:text/csv;base64,' + base64Csv;
+                link.download = `${sheetName}_export_${new Date().toISOString().slice(0, 10)}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showSnackbar('Data exported successfully!', 'success');
+            })
+            .withFailureHandler(e => { showSnackbar('Export Error: ' + e, 'error'); toggleLoading(false); })
+            .exportToCSV(sheetName);
+    }
+    
+    // --- Initialization ---
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        // Dark Mode Toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.checked = true;
+        }
+        darkModeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
+        });
+        
+        // Tab Navigation Listener
+        document.querySelectorAll('#nav-tabs .nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchTab(link.getAttribute('data-tab'));
+                // Close mobile sidebar if open
+                const sidebarCollapse = document.getElementById('sidebar');
+                if (sidebarCollapse.classList.contains('show')) {
+                const collapseInstance = bootstrap.Collapse.getInstance(sidebarCollapse);
+                    if (collapseInstance) {
+                         collapseInstance.hide();
+                    }
+                }
+            });
+        
+        // Quick Action Links Listener
+        document.querySelectorAll('.quick-action').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = link.getAttribute('data-action');
+                const modalSelector = modalMap[action];
+                if (modalSelector) {
+                    const modal = new bootstrap.Modal(document.querySelector(modalSelector));
+                    modal.show();
+                }
+            });
+        });
+
+        // Form Submission Listeners
+        document.getElementById('transactionForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Transactions', 'TR'));
+        document.getElementById('creditCardForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Credit_Cards', 'CARD'));
+        document.getElementById('goalForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Goals', 'GOAL'));
+        document.getElementById('reminderForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Reminders', 'REM'));
+        
+        // Conditional fields for Transaction Form
+        const transMethod = document.getElementById('trans-method');
+        const transCategory = document.getElementById('trans-category');
+        const transAccountGroup = document.getElementById('trans-account-group');
+        const transRelatedGroup = document.getElementById('trans-related-group');
+        
+        function toggleTransactionFields() {
+            transAccountGroup.style.display = transMethod.value === 'Credit Card' ? 'block' : 'none';
+            transRelatedGroup.style.display = transCategory.value === 'Savings Deposit' ? 'block' : 'none';
+        }
+        
+        transMethod.addEventListener('change', toggleTransactionFields);
+        transCategory.addEventListener('change', toggleTransactionFields);
+        toggleTransactionFields(); // Initial check
+        
+        // Load the initial dashboard view
+        switchTab('dashboard');
+    });
+</script>
