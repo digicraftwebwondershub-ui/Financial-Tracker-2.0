@@ -83,6 +83,34 @@
         background-color: var(--success-color);
     }
 
+    /* Transaction Card Styling */
+    .transaction-card {
+        border-radius: 10px;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid #e9ecef;
+    }
+    .transaction-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.1);
+    }
+    .transaction-card .card-title {
+        font-weight: 600;
+    }
+    .transaction-card .transaction-actions {
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .transaction-card:hover .transaction-actions {
+        opacity: 1;
+    }
+    .transaction-card .text-success { color: var(--success-color) !important; }
+    .transaction-card .text-danger { color: var(--danger-color) !important; }
+    .transaction-card .text-info { color: #17a2b8 !important; } /* Bootstrap info color */
+    body.dark-mode .transaction-card {
+        border-color: #333;
+    }
+
 
     /* Sidebar Styling */
     .sidebar { 

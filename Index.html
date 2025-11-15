@@ -106,12 +106,46 @@
                 </div>
                 
                 <div id="transactions" class="tab-content" style="display:none;">
-                    <h2>Transactions</h2>
-                    <div class="d-flex justify-content-end mb-3">
-                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addTransactionModal"><i class="fas fa-plus"></i> Add Transaction</button>
-                         <button class="btn btn-outline-secondary" onclick="exportData('Transactions')"><i class="fas fa-download"></i> Export CSV</button>
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                         <h1 class="h2"><i class="fas fa-exchange-alt me-2"></i>Transaction History</h1>
+                         <div class="btn-toolbar mb-2 mb-md-0">
+                              <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addTransactionModal"><i class="fas fa-plus"></i> Add Transaction</button>
+                              <button class="btn btn-outline-secondary" onclick="exportData('Transactions')"><i class="fas fa-download"></i> Export CSV</button>
+                         </div>
                     </div>
-                    <table class="table" id="transactions-table"><tbody></tbody></table>
+
+                    <div class="card p-3 mb-4">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-3">
+                                <label for="filter-type" class="form-label">Type</label>
+                                <select id="filter-type" class="form-select">
+                                    <option selected>All</option>
+                                    <option>Income</option>
+                                    <option>Expense</option>
+                                    <option>Transfer</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="filter-category" class="form-label">Category</label>
+                                <select id="filter-category" class="form-select">
+                                    <option selected>All</option>
+                                    <!-- Categories will be populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="filter-start-date" class="form-label">Start Date</label>
+                                <input type="date" id="filter-start-date" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="filter-end-date" class="form-label">End Date</label>
+                                <input type="date" id="filter-end-date" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4" id="transaction-cards-container">
+                        <!-- Transaction cards will be inserted here -->
+                    </div>
                 </div>
                 
                 <div id="creditCards" class="tab-content" style="display:none;">
