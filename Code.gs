@@ -211,7 +211,40 @@ function loadData(sheetName) {
  * Loads all data for a specific type of tab.
  */
 function loadTransactions() { return loadData('Transactions'); }
-function loadCreditCards() { return loadData('Credit_Cards'); }
+
+function loadCreditCards() { 
+  const cards = loadData('Credit_Cards');
+  const transactions = loadData('Transactions');
+
+  // Calculate live balances from the transaction log
+  const cardBalances = {};
+  transactions.forEach(t => {
+    const cardId = t.ACCOUNT;
+    if (cardId && cardId.startsWith('CARD-')) {
+      if (!cardBalances[cardId]) {
+        cardBalances[cardId] = 0;
+      }
+      const amount = t.AMOUNT || 0;
+      if (t.CATEGORY === 'Credit Card Payment') {
+        cardBalances[cardId] -= amount;
+      } else if (t.TYPE === 'Expense') {
+        cardBalances[cardId] += amount;
+      }
+    }
+  });
+
+  // Map the live balances back onto the card data, replacing the static balance
+  const updatedCards = cards.map(card => {
+    const liveBalance = cardBalances[card.CARD_ID];
+    if (liveBalance !== undefined) {
+      card.BALANCE = liveBalance;
+    }
+    return card;
+  });
+
+  return updatedCards;
+}
+
 function loadGoals() { return loadData('Goals'); }
 function loadReminders() { return loadData('Reminders'); }
 
