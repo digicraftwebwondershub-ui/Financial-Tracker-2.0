@@ -269,7 +269,7 @@ function getDashboardData() {
       const limit = c.LIMIT || 0;
       // Use the live calculated balance, or 0 if no transactions exist for it.
       const balance = cardBalances[c.CARD_ID] || 0;
-
+      
       totalCreditLimit += limit;
       totalCardBalance += balance;
       
@@ -335,7 +335,7 @@ function recalculateAndUpdateCardBalances() {
     const transactions = loadData('Transactions');
     const cards = loadData('Credit_Cards');
     const cardsSheet = getSheet('Credit_Cards');
-
+    
     if (!cardsSheet || cards.length === 0) {
       sheetUi.alert('No credit cards found to update.');
       return;
@@ -357,13 +357,13 @@ function recalculateAndUpdateCardBalances() {
       const cardId = t.ACCOUNT;
       if (cardUpdates[cardId]) {
         const amount = t.AMOUNT || 0;
-
+        
         if (t.TYPE === 'Expense') {
           cardUpdates[cardId].balance += amount;
         } else if (t.CATEGORY === 'Credit Card Payment') {
           // Payments should also be treated as expenses against the card balance from a transactional view
           cardUpdates[cardId].balance -= amount; // Payment reduces the balance
-
+          
           // Check if this is the most recent payment
           const paymentDate = new Date(t.DATE);
           if (!cardUpdates[cardId].lastPaymentDate || paymentDate > cardUpdates[cardId].lastPaymentDate) {
@@ -373,7 +373,7 @@ function recalculateAndUpdateCardBalances() {
         }
       }
     });
-
+    
     // 2. Prepare data for batch update
     const [headers, ...rows] = cardsSheet.getDataRange().getValues();
     const balanceColIndex = headers.indexOf('BALANCE');
@@ -395,7 +395,7 @@ function recalculateAndUpdateCardBalances() {
         }
         updateRangeData.push(row);
     });
-
+    
     // 3. Perform the batch update
     const dataRange = cardsSheet.getRange(2, 1, updateRangeData.length, headers.length);
     dataRange.setValues(updateRangeData);
