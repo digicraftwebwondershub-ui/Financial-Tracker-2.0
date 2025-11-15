@@ -44,25 +44,59 @@ function getSheet(sheetName) {
  * Sets up initial ID counters in the Config sheet. Run once after setup.
  */
 function setupInitialConfig() {
-  // Define UI locally, as it's only available when running from the editor/sheet.
   const sheetUi = SpreadsheetApp.getUi(); 
-  
-  const configSheet = SS.getSheetByName('Config');
+  const configSheet = getSheet('Config');
   if (!configSheet) {
     throw new Error("Config sheet not found. Please create it.");
   }
   
-  // Clear and set headers
   configSheet.clearContents();
   configSheet.getRange('A1:B1').setValues([['KEY', 'VALUE']]);
   
-  // Initial ID setup (e.g., TR-1000)
   configSheet.appendRow(['NEXT_TRANSACTION_ID', 1000]);
   configSheet.appendRow(['NEXT_CARD_ID', 2000]);
   configSheet.appendRow(['NEXT_GOAL_ID', 3000]);
   configSheet.appendRow(['NEXT_REMINDER_ID', 4000]);
   
-  sheetUi.alert('Initial configuration complete! IDs are ready.'); // <--- Use the local variable
+  sheetUi.alert('Initial configuration complete! Run fixConfigIDs() next to align IDs with existing data.'); 
+}
+
+/**
+ * FIX FUNCTION: Aligns the NEXT_ID values in the Config sheet 
+ * based on the last row ID found in each data sheet.
+ */
+function fixConfigIDs() {
+    const sheetUi = SpreadsheetApp.getUi();
+    const configSheet = getSheet('Config');
+    
+    const sheetMaps = {
+        'Transactions': { key: 'NEXT_TRANSACTION_ID', prefix: 'TR-' },
+        'Credit_Cards': { key: 'NEXT_CARD_ID', prefix: 'CARD-' },
+        'Goals': { key: 'NEXT_GOAL_ID', prefix: 'GOAL-' },
+        'Reminders': { key: 'NEXT_REMINDER_ID', prefix: 'REM-' }
+    };
+    
+    for (let sheetName in sheetMaps) {
+        const sheet = getSheet(sheetName);
+        if (sheet.getLastRow() > 1) {
+            const lastIdString = sheet.getRange(sheet.getLastRow(), 1).getValue();
+            let lastIdNumber = parseInt(String(lastIdString).replace(sheetMaps[sheetName].prefix, '')) || 0;
+            
+            if (lastIdNumber > 0) {
+                const nextId = lastIdNumber + 1;
+                
+                const configValues = configSheet.getDataRange().getValues();
+                for (let i = 0; i < configValues.length; i++) {
+                    if (configValues[i][0] === sheetMaps[sheetName].key) {
+                        configSheet.getRange(i + 1, 2).setValue(nextId);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    sheetUi.alert('Configuration IDs successfully aligned with existing data!');
 }
 
 /**
@@ -103,20 +137,64 @@ function generateUniqueId(prefix) {
  * @return {Array<Object>} An array of objects, where each object is a row with header keys.
  */
 function loadData(sheetName) {
+  Logger.log(`Starting data load for sheet: ${sheetName}`);
   const sheet = getSheet(sheetName);
-  if (!sheet) return [];
+  if (!sheet) {
+      Logger.log(`Error: Sheet ${sheetName} not found.`);
+      return [];
+  }
   
-  const [headers, ...data] = sheet.getDataRange().getValues();
+  // Safely handle sheets with only a header row or empty sheets.
+  if (sheet.getLastRow() < 2) {
+    Logger.log(`Sheet ${sheetName} is empty.`);
+    return []; 
+  }
   
-  return data.map(row => {
+  const range = sheet.getDataRange();
+  const [headers, ...data] = range.getValues();
+  
+  // Define keys that represent numeric values and need cleanup/conversion from string
+  const NUMERIC_KEYS = ['AMOUNT', 'LIMIT', 'BALANCE', 'LASTPAYMENT', 'APR', 'TARGETAMOUNT', 'SAVEDAMOUNT', 'MONTHLYSAVINGS', 'DAYSLEFT'];
+  const DATE_KEYS = ['DATE', 'LASTPAYMENTDATE', 'DUEDATE', 'STATEMENTDATE', 'TARGETDATE'];
+
+  let results = [];
+  data.forEach((row, rowIndex) => {
     let obj = {};
     headers.forEach((header, i) => {
-      // Trim header for cleaner keys and remove symbols (like ₱)
+      // Clean header name: AMOUNT(₱) becomes AMOUNT
       const key = header.replace(/[^a-zA-Z0-9_]/g, '').toUpperCase();
-      obj[key] = row[i];
+      let value = row[i];
+      
+      try {
+          // 1. Numerical Cleanup
+          if (NUMERIC_KEYS.includes(key)) {
+              if (typeof value === 'string') {
+                  // Remove commas/thousand separators and try to parse
+                  value = parseFloat(value.replace(/,/g, '')) || 0;
+              } else if (value instanceof Date) {
+                  // Sometimes numerical data is read as a date (e.g., small numbers)
+                  value = parseFloat(value.getTime()) || 0;
+              } else {
+                  value = parseFloat(value) || 0;
+              }
+          }
+          
+          // 2. Date Cleanup (Convert date objects to string for client-side consumption)
+          if (DATE_KEYS.includes(key) && value instanceof Date) {
+              value = value.toISOString().split('T')[0];
+          }
+
+          obj[key] = value;
+      } catch (e) {
+          Logger.log(`Error processing row ${rowIndex + 2} in ${sheetName}: Key=${key}, Value=${value}. Error: ${e.message}`);
+          obj[key] = null; // Set to null on error to prevent total script crash
+      }
     });
-    return obj;
+    results.push(obj);
   });
+  
+  Logger.log(`Successfully loaded ${results.length} rows from ${sheetName}.`);
+  return results;
 }
 
 /**
@@ -133,79 +211,87 @@ function loadReminders() { return loadData('Reminders'); }
  * Calculates all dashboard key performance indicators (KPIs).
  */
 function getDashboardData() {
-  const transactions = loadTransactions();
-  const cards = loadCreditCards();
-  const goals = loadGoals();
+  try {
+    const transactions = loadTransactions();
+    const cards = loadCreditCards();
+    const goals = loadGoals();
 
-  let totalIncome = 0;
-  let totalExpenses = 0;
-  let totalSavingsDeposits = 0;
-  let totalCreditLimit = 0;
-  let totalCardBalance = 0;
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let totalSavingsDeposits = 0;
+    let totalCreditLimit = 0;
+    let totalCardBalance = 0;
 
-  // 1. Transaction-based calculations
-  transactions.forEach(t => {
-    const amount = t.AMOUNT;
-    if (t.TYPE === 'Income') {
-      totalIncome += amount;
-    } else if (t.TYPE === 'Expense') {
-      totalExpenses += amount;
-    }
+    // 1. Transaction-based calculations
+    transactions.forEach(t => {
+      // t.AMOUNT is now guaranteed to be a number due to loadData fix
+      const amount = t.AMOUNT || 0;
+      if (t.TYPE === 'Income') {
+        totalIncome += amount;
+      } else if (t.TYPE === 'Expense') {
+        totalExpenses += amount;
+      }
+      
+      if (t.CATEGORY === 'Savings Deposit') {
+        totalSavingsDeposits += amount;
+      }
+    });
+
+    // 2. Credit Card calculations
+    const cardStats = cards.map(c => {
+      const limit = c.LIMIT || 0;
+      const balance = c.BALANCE || 0;
+      totalCreditLimit += limit;
+      totalCardBalance += balance;
+      
+      return {
+        name: c.CARDNAME,
+        balance: balance,
+        limit: limit,
+        usage: limit > 0 ? (balance / limit) : 0,
+        id: c.CARD_ID
+      };
+    });
     
-    // Note: Savings Deposits are a type of Expense but tracked separately for the rate
-    if (t.CATEGORY === 'Savings Deposit') {
-      totalSavingsDeposits += amount;
-    }
-  });
+    // 3. Goals calculations
+    const goalsProgress = goals.map(g => {
+      const target = g.TARGETAMOUNT || 0;
+      const saved = g.SAVEDAMOUNT || 0;
+      const progress = target > 0 ? (saved / target) : 0;
+      
+      return {
+        name: g.GOALNAME,
+        saved: saved,
+        target: target,
+        progress: progress,
+        priority: g.PRIORITYLEVEL
+      };
+    });
 
-  // 2. Credit Card calculations
-  const cardStats = cards.map(c => {
-    const limit = c.LIMIT || 0;
-    const balance = c.BALANCE || 0;
-    totalCreditLimit += limit;
-    totalCardBalance += balance;
-    
+    const netIncome = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? (totalSavingsDeposits / totalIncome) : 0;
+    const creditUsage = totalCreditLimit > 0 ? (totalCardBalance / totalCreditLimit) : 0;
+
+    Logger.log('Dashboard data calculated successfully.');
     return {
-      name: c.CARDNAME,
-      balance: balance,
-      limit: limit,
-      usage: limit > 0 ? (balance / limit) : 0,
-      id: c.CARD_ID
+      netIncome: netIncome,
+      totalExpenses: totalExpenses,
+      totalIncome: totalIncome,
+      savingsRate: savingsRate,
+      creditUsage: creditUsage,
+      cardStats: cardStats,
+      goalsProgress: goalsProgress,
+      motivationalMessage: netIncome >= 0 ? 
+        "Great job! Your net income is positive—keep building financial freedom!" : 
+        "Review expenses this month. Every small saving counts!"
     };
-  });
-  
-  // 3. Goals calculations
-  const goalsProgress = goals.map(g => {
-    const target = g.TARGETAMOUNT || 0;
-    const saved = g.SAVEDAMOUNT || 0;
-    const progress = target > 0 ? (saved / target) : 0;
-    
+  } catch (e) {
+    Logger.log(`FATAL ERROR in getDashboardData: ${e.message}`);
+    // Return empty data structure to prevent front-end crash
     return {
-      name: g.GOALNAME,
-      saved: saved,
-      target: target,
-      progress: progress,
-      priority: g.PRIORITYLEVEL
+      netIncome: 0, totalExpenses: 0, totalIncome: 0, savingsRate: 0, creditUsage: 0, cardStats: [], goalsProgress: [], motivationalMessage: "Data failed to load. Check Apps Script logs."
     };
-  });
-
-  const netIncome = totalIncome - totalExpenses;
-  const savingsRate = totalIncome > 0 ? (totalSavingsDeposits / totalIncome) : 0;
-  const creditUsage = totalCreditLimit > 0 ? (totalCardBalance / totalCreditLimit) : 0;
-
-  return {
-    netIncome: netIncome,
-    totalExpenses: totalExpenses,
-    totalIncome: totalIncome,
-    savingsRate: savingsRate,
-    creditUsage: creditUsage,
-    cardStats: cardStats,
-    goalsProgress: goalsProgress,
-    // Simple motivational message logic
-    motivationalMessage: netIncome >= 0 ? 
-      "Great job! Your net income is positive—keep building financial freedom!" : 
-      "Review expenses this month. Every small saving counts!"
-  };
+  }
 }
 
 // --- Action & Update Functions ---
@@ -232,7 +318,12 @@ function updateRecordById(sheetName, id, data) {
           // Special handling for numerical fields
           let value = data[key];
           if (['AMOUNT', 'LIMIT', 'BALANCE', 'TARGETAMOUNT', 'SAVEDAMOUNT', 'MONTHLYSAVINGS', 'APR'].includes(key)) {
-            value = parseFloat(value) || 0;
+            // Ensure any string input is cleaned/parsed again before saving back to sheet
+            if (typeof value === 'string') {
+                value = parseFloat(value.replace(/,/g, '')) || 0;
+            } else {
+                value = parseFloat(value) || 0;
+            }
           }
           sheet.getRange(rowNum, colIndex + 1).setValue(value);
         }
@@ -261,7 +352,8 @@ function addTransaction(formData) {
       'DATE': formData.DATE || new Date().toLocaleDateString('en-US'),
       'TYPE': formData.TYPE,
       'CATEGORY': formData.CATEGORY,
-      'AMOUNT(₱)': parseFloat(formData.AMOUNT) || 0,
+      // Clean amount before processing and saving
+      'AMOUNT(₱)': parseFloat(String(formData.AMOUNT).replace(/,/g, '')) || 0, 
       'DESCRIPTION': formData.DESCRIPTION,
       'PAYMENTMETHOD': formData.PAYMENTMETHOD,
       'ACCOUNT': formData.ACCOUNT, // Could be a CARD_ID
@@ -277,12 +369,12 @@ function addTransaction(formData) {
 
     // --- Relational Logic A: Credit Card Transactions ---
     if (formData.PAYMENTMETHOD === 'Credit Card' && formData.ACCOUNT) {
-      updateCreditCardBalance(formData.ACCOUNT, parseFloat(formData.AMOUNT) || 0, formData.TYPE, formData.CATEGORY);
+      updateCreditCardBalance(formData.ACCOUNT, parseFloat(String(formData.AMOUNT).replace(/,/g, '')) || 0, formData.TYPE, formData.CATEGORY);
     }
 
     // --- Relational Logic B: Savings Goal Deposits ---
     if (formData.CATEGORY === 'Savings Deposit' && formData.RELATED_ID) {
-      updateSavingsGoal(formData.RELATED_ID, parseFloat(formData.AMOUNT) || 0);
+      updateSavingsGoal(formData.RELATED_ID, parseFloat(String(formData.AMOUNT).replace(/,/g, '')) || 0);
     }
 
     return { status: 'success', message: `Transaction ${transactionId} added successfully.` };
