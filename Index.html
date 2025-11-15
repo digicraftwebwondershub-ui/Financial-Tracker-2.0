@@ -149,12 +149,15 @@
                 </div>
                 
                 <div id="creditCards" class="tab-content" style="display:none;">
-                    <h2>Credit Cards</h2>
-                    <div class="d-flex justify-content-end mb-3">
-                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addCreditCardModal"><i class="fas fa-plus"></i> Add Card</button>
-                         <button class="btn btn-outline-secondary" onclick="exportData('Credit_Cards')"><i class="fas fa-download"></i> Export CSV</button>
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                         <h1 class="h2"><i class="fas fa-credit-card me-2"></i>Credit Card Management</h1>
+                         <div class="btn-toolbar mb-2 mb-md-0">
+                              <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addCreditCardModal"><i class="fas fa-plus"></i> Add Credit Card</button>
+                         </div>
                     </div>
-                    <table class="table" id="credit-cards-table"><tbody></tbody></table>
+                    <div id="credit-cards-container" class="row g-4">
+                        <!-- Credit cards will be rendered here -->
+                    </div>
                 </div>
                 
                 <div id="savingsGoals" class="tab-content" style="display:none;">
