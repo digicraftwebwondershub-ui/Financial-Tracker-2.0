@@ -245,7 +245,25 @@ function loadCreditCards() {
   return updatedCards;
 }
 
-function loadGoals() { return loadData('Goals'); }
+function loadGoals() { 
+    const goals = loadData('Goals');
+    const today = new Date();
+
+    return goals.map(goal => {
+        const targetDate = new Date(goal.TARGETDATE);
+        const remainingAmount = (goal.TARGETAMOUNT || 0) - (goal.SAVEDAMOUNT || 0);
+        
+        if (remainingAmount <= 0 || targetDate <= today) {
+            goal.weeklySavingsNeeded = 0;
+            return goal;
+        }
+
+        const weeksLeft = (targetDate - today) / (1000 * 60 * 60 * 24 * 7);
+        goal.weeklySavingsNeeded = weeksLeft > 0 ? remainingAmount / weeksLeft : remainingAmount;
+
+        return goal;
+    });
+}
 function loadReminders() { return loadData('Reminders'); }
 
 // --- Dashboard Calculation Functions ---
