@@ -160,15 +160,59 @@
     }
 
     // Generic Load and Render function
-    function loadAndRender(loadFunction, renderFunction, sheetName) {
+    function loadAndRender(loadFunction, renderFunction, sheetName, filters = {}) {
         toggleLoading(true);
         google.script.run
             .withSuccessHandler(renderFunction)
             .withFailureHandler(e => { showSnackbar(`Error loading ${sheetName}: ` + e, 'error'); toggleLoading(false); })
-            [loadFunction]();
+            [loadFunction](filters);
     }
 
-    function loadTransactions() { loadAndRender('loadTransactions', renderTransactions, 'Transactions'); }
+    function applyTransactionFilters() {
+        const type = document.getElementById('filter-type').value;
+        const category = document.getElementById('filter-category').value;
+        const startDate = document.getElementById('filter-start-date').value;
+        const endDate = document.getElementById('filter-end-date').value;
+
+        const filters = {
+            type: type === 'All' ? null : type,
+            category: category === 'All' ? null : category,
+            startDate: startDate || null,
+            endDate: endDate || null
+        };
+        loadTransactions(filters);
+    }
+
+    function loadTransactions(filters = {}) {
+        loadAndRender('loadTransactions', (data) => {
+            populateCategoryFilter(data);
+            renderTransactions(data);
+        }, 'Transactions', filters);
+    }
+
+    function populateCategoryFilter(transactions) {
+        const categoryFilter = document.getElementById('filter-category');
+        const existingValue = categoryFilter.value;
+
+        // Extract unique categories, excluding any undefined/null ones
+        const categories = [...new Set(transactions.map(t => t.CATEGORY).filter(Boolean))];
+        categories.sort();
+
+        // Clear existing options except for "All"
+        while (categoryFilter.options.length > 1) {
+            categoryFilter.remove(1);
+        }
+
+        // Add new options
+        categories.forEach(cat => {
+            const option = new Option(cat, cat);
+            categoryFilter.add(option);
+        });
+
+        // Restore previous selection if it still exists
+        categoryFilter.value = existingValue;
+    }
+
 
     function getTransactionCardDetails(transaction) {
         let icon, color, note, title;
@@ -245,8 +289,8 @@
                                     <p class="card-text mb-0"><strong>Account:</strong> ${t.ACCOUNT || 'N/A'}</p>
                                 </div>
                                 <div class="transaction-actions">
-                                    <button class="btn btn-sm btn-outline-secondary me-1" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                                    <button class="btn btn-sm btn-outline-secondary me-1" title="Edit" onclick="editTransaction('${t.TRANSACTION_ID}')"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteTransaction('${t.TRANSACTION_ID}')"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
                             <div class="mt-3 pt-3 border-top">
@@ -403,52 +447,157 @@
     
     function loadReminders() { loadAndRender('loadReminders', renderReminders, 'Reminders'); }
     function renderReminders(data) {
-        const tableBody = document.querySelector('#reminders-table tbody');
-        tableBody.innerHTML = '';
-        data.sort((a, b) => {
-            const aDate = new Date(a.DUEDATE);
-            const bDate = new Date(b.DUEDATE);
-            return aDate - bDate;
-        });
-        
+        const container = document.getElementById('reminders-container');
+        container.innerHTML = '';
+
+        if (data.length === 0) {
+            container.innerHTML = '<div class="col-12"><p class="text-muted text-center">No payment reminders set up yet. Click "Add Reminder" to get started.</p></div>';
+            toggleLoading(false);
+            return;
+        }
+
+        data.sort((a, b) => new Date(a.DUEDATE) - new Date(b.DUEDATE));
+
+        let cardsHtml = '';
         data.forEach(r => {
             const daysLeft = r.DAYSLEFT || 0;
-            let statusClass = '';
-            
+            let status, borderColor, statusBadgeColor, note, noteIcon, actionButton;
+
             if (r.STATUS === 'Paid') {
-                statusClass = 'bg-success';
+                status = 'Paid';
+                borderColor = 'border-success';
+                statusBadgeColor = 'bg-success';
+                note = `You paid your ${r.DESCRIPTION} on time — nice discipline!`;
+                noteIcon = 'fas fa-check-square text-success';
+                actionButton = '<button class="btn btn-secondary action-btn" disabled><i class="fas fa-history me-2"></i>Paid</button>';
             } else if (daysLeft < 0) {
-                statusClass = 'bg-danger'; // Overdue
-                r.STATUS = 'Overdue'; // Update status text for display
-            } else if (daysLeft <= 7) {
-                statusClass = 'bg-warning'; // Upcoming
+                status = 'Pending';
+                borderColor = 'border-danger';
+                statusBadgeColor = 'bg-danger';
+                note = `Overdue! Don't stress — mark it done once paid.`;
+                noteIcon = 'fas fa-exclamation-circle text-danger';
+                actionButton = `<button class="btn btn-danger action-btn" onclick="markReminderPaid('${r.REMINDER_ID}')"><i class="fas fa-check-circle me-2"></i>Mark as Paid</button>`;
             } else {
-                statusClass = 'bg-info';
+                status = 'Pending';
+                borderColor = 'border-warning';
+                statusBadgeColor = 'bg-warning text-dark';
+                note = `Due in ${daysLeft} day(s). A friendly reminder to stay on top of your finances!`;
+                noteIcon = 'fas fa-info-circle text-warning';
+                actionButton = `<button class="btn btn-success action-btn" onclick="markReminderPaid('${r.REMINDER_ID}')"><i class="fas fa-check-circle me-2"></i>Mark as Paid</button>`;
             }
 
-            const row = `
-                <tr>
-                    <td>${r.REMINDER_ID}</td>
-                    <td>${r.DESCRIPTION}</td>
-                    <td>${r.CATEGORY}</td>
-                    <td class="fw-bold">${formatCurrency(r.AMOUNT)}</td>
-                    <td>${new Date(r.DUEDATE).toLocaleDateString()}</td>
-                    <td>${daysLeft}</td>
-                    <td><span class="badge ${statusClass}">${r.STATUS}</span></td>
-                    <td>
-                        ${r.STATUS !== 'Paid' ? 
-                            `<button class="btn btn-sm btn-success me-1" title="Mark Paid" onclick="markReminderPaid('${r.REMINDER_ID}')"><i class="fas fa-check"></i></button>` 
-                            : ''
-                        }
-                        <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="fas fa-edit"></i></button>
-                    </td>
-                </tr>`;
-            tableBody.innerHTML += row;
+            const cardHtml = `
+                <div class="col-lg-4 col-md-6">
+                    <div class="card reminder-card ${borderColor}">
+                        <div class="card-body">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h5 class="card-title mb-1">${r.DESCRIPTION}</h5>
+                                    <span class="badge status-badge ${statusBadgeColor}">${status}</span>
+                                </div>
+                                <p class="card-text mb-2">
+                                    Amount: <strong>${formatCurrency(r.AMOUNT)}</strong>
+                                </p>
+                                <p class="text-muted small">
+                                    Due: ${new Date(r.DUEDATE).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} | ${daysLeft} days left
+                                </p>
+                                <p class="reminder-note text-muted mt-3">
+                                    <i class="${noteIcon} me-2"></i>${note}
+                                </p>
+                            </div>
+                            <div class="mt-3 d-flex">
+                                ${actionButton}
+                                <button class="btn btn-sm btn-outline-secondary ms-2" title="Edit"><i class="fas fa-edit"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            cardsHtml += cardHtml;
         });
+
+        container.innerHTML = cardsHtml;
         toggleLoading(false);
     }
 
     // --- Action Handlers (Forms & Buttons) ---
+
+    /** Deletes a transaction after confirmation. */
+    function deleteTransaction(transactionId) {
+        if (!confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+            return;
+        }
+        toggleLoading(true);
+        google.script.run
+            .withSuccessHandler(result => {
+                showSnackbar(result.message, result.status);
+                applyTransactionFilters(); // Refresh the view
+            })
+            .withFailureHandler(e => { showSnackbar('Delete Error: ' + e, 'error'); toggleLoading(false); })
+            .deleteRecord('Transactions', transactionId);
+    }
+
+    /** Populates the transaction modal for editing. */
+    function editTransaction(transactionId) {
+        toggleLoading(true);
+        google.script.run
+            .withSuccessHandler(transaction => {
+                // Populate the modal
+                document.getElementById('edit-trans-id').value = transaction.TRANSACTION_ID;
+                document.getElementById('edit-trans-date').value = new Date(transaction.DATE).toISOString().slice(0, 10);
+                document.getElementById('edit-trans-type').value = transaction.TYPE;
+                document.getElementById('edit-trans-category').value = transaction.CATEGORY;
+                document.getElementById('edit-trans-amount').value = transaction.AMOUNT;
+                document.getElementById('edit-trans-desc').value = transaction.DESCRIPTION;
+                document.getElementById('edit-trans-method').value = transaction.PAYMENTMETHOD;
+                document.getElementById('edit-trans-account').value = transaction.ACCOUNT;
+                document.getElementById('edit-trans-related').value = transaction.RELATED_ID;
+
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('editTransactionModal'));
+                modal.show();
+                toggleLoading(false);
+            })
+            .withFailureHandler(e => { showSnackbar('Error fetching transaction: ' + e, 'error'); toggleLoading(false); })
+            .getRecordById('Transactions', transactionId);
+    }
+
+    /** Special handler for marking a reminder as paid. */
+    function markReminderPaid(reminderId) {
+        if (!confirm('Are you sure you want to mark this reminder as paid and create a corresponding transaction?')) {
+            return;
+        }
+        toggleLoading(true);
+        google.script.run
+            .withSuccessHandler(result => {
+                showSnackbar(result.message, result.status);
+                loadReminders(); // Refresh the Reminders tab
+                loadDashboard(); // Dashboard might be affected (e.g., Net Income)
+            })
+            .withFailureHandler(e => { showSnackbar('Payment Error: ' + e, 'error'); toggleLoading(false); })
+            .markReminderPaid(reminderId, {}); // {} is a placeholder for potential form data
+    }
+
+    function handleEditTransactionSubmit(event) {
+        event.preventDefault();
+        toggleLoading(true);
+
+        const form = event.target;
+        const formData = {};
+        new FormData(form).forEach((value, key) => {
+            formData[key] = value;
+        });
+        const transactionId = formData['TRANSACTION_ID'];
+
+        google.script.run
+            .withSuccessHandler(result => {
+                showSnackbar(result.message, result.status);
+                const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                if (modal) modal.hide();
+                applyTransactionFilters(); // Refresh the view
+            })
+            .withFailureHandler(e => { showSnackbar('Update Error: ' + e, 'error'); toggleLoading(false); })
+            .updateRecord('Transactions', transactionId, formData);
+    }
 
     /** Generic function to handle form submission for adding a new record. */
     function handleFormSubmission(event, sheetName, prefix) {
@@ -559,6 +708,7 @@
 
         // Form Submission Listeners
         document.getElementById('transactionForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Transactions', 'TR'));
+        document.getElementById('editTransactionForm').addEventListener('submit', handleEditTransactionSubmit);
         document.getElementById('creditCardForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Credit_Cards', 'CARD'));
         document.getElementById('goalForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Goals', 'GOAL'));
         document.getElementById('reminderForm').addEventListener('submit', (e) => handleFormSubmission(e, 'Reminders', 'REM'));
@@ -578,6 +728,12 @@
         transCategory.addEventListener('change', toggleTransactionFields);
         toggleTransactionFields(); // Initial check
         
+        // Transaction Filter Listeners
+        document.getElementById('filter-type').addEventListener('change', applyTransactionFilters);
+        document.getElementById('filter-category').addEventListener('change', applyTransactionFilters);
+        document.getElementById('filter-start-date').addEventListener('change', applyTransactionFilters);
+        document.getElementById('filter-end-date').addEventListener('change', applyTransactionFilters);
+
         // Load the initial dashboard view
         switchTab('dashboard');
     });
