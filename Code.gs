@@ -226,11 +226,11 @@ function loadTransactions(filters = {}) {
       if (filters.category && t.CATEGORY !== filters.category) return false;
       if (startDate && transactionDate < startDate) return false;
       if (endDate && transactionDate > endDate) return false;
-
+      
       return true;
     });
   }
-
+  
   return transactions;
 }
 
@@ -694,19 +694,19 @@ function markReminderPaid(reminderId, formData) {
 
     // 2. Update reminder status
     let updateData = { STATUS: 'Paid' };
-
+    
     // 3. Reset next due date if recurring
     if (reminder.RECURRING === 'Yes') {
       const currentDueDate = new Date(reminder.DUEDATE);
       let nextDueDate = new Date(currentDueDate);
-
+      
       // Simple recurring logic: assumes monthly for a clean example
       nextDueDate.setMonth(nextDueDate.getMonth() + 1);
       updateData.DUEDATE = nextDueDate.toLocaleDateString('en-US');
     }
-
+    
     updateRecord('Reminders', reminderId, updateData);
-
+    
     return { status: 'success', message: `Reminder ${reminderId} marked paid and transaction created.` };
   } catch (e) {
     return { status: 'error', message: e.toString() };
