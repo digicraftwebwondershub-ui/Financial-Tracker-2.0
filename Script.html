@@ -183,17 +183,17 @@
         loadTransactions(filters);
     }
 
-    function loadTransactions(filters = {}) {
+    function loadTransactions(filters = {}) { 
         loadAndRender('loadTransactions', (data) => {
             populateCategoryFilter(data);
             renderTransactions(data);
-        }, 'Transactions', filters);
+        }, 'Transactions', filters); 
     }
-
+    
     function populateCategoryFilter(transactions) {
         const categoryFilter = document.getElementById('filter-category');
         const existingValue = categoryFilter.value;
-
+        
         // Extract unique categories, excluding any undefined/null ones
         const categories = [...new Set(transactions.map(t => t.CATEGORY).filter(Boolean))];
         categories.sort();
@@ -733,7 +733,7 @@
         document.getElementById('filter-category').addEventListener('change', applyTransactionFilters);
         document.getElementById('filter-start-date').addEventListener('change', applyTransactionFilters);
         document.getElementById('filter-end-date').addEventListener('change', applyTransactionFilters);
-
+        
         // Load the initial dashboard view
         switchTab('dashboard');
     });
