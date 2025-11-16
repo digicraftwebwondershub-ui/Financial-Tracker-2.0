@@ -175,12 +175,16 @@
                 </div>
 
                 <div id="reminders" class="tab-content" style="display:none;">
-                    <h2>Reminders</h2>
-                    <div class="d-flex justify-content-end mb-3">
-                         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addReminderModal"><i class="fas fa-plus"></i> Add Reminder</button>
-                         <button class="btn btn-outline-secondary" onclick="exportData('Reminders')"><i class="fas fa-download"></i> Export CSV</button>
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2"><i class="fas fa-bell me-2"></i>Payment Reminders</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addReminderModal"><i class="fas fa-plus"></i> Add Reminder</button>
+                            <button class="btn btn-outline-secondary" onclick="exportData('Reminders')"><i class="fas fa-download"></i> Export CSV</button>
+                        </div>
                     </div>
-                    <table class="table" id="reminders-table"><tbody></tbody></table>
+                    <div id="reminders-container" class="row g-4">
+                        <!-- Reminder cards will be inserted here -->
+                    </div>
                 </div>
 
             </main>
@@ -399,6 +403,74 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button type="submit" class="btn btn-primary">Save Reminder</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editTransactionModal" tabindex="-1" aria-labelledby="editTransactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editTransactionModalLabel">Edit Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="editTransactionForm">
+                    <input type="hidden" id="edit-trans-id" name="TRANSACTION_ID">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit-trans-date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="edit-trans-date" name="DATE" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-trans-type" class="form-label">Type</label>
+                            <select class="form-select" id="edit-trans-type" name="TYPE" required>
+                                <option value="Expense">Expense</option>
+                                <option value="Income">Income</option>
+                                <option value="Transfer">Transfer</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-trans-category" class="form-label">Category</label>
+                            <select class="form-select" id="edit-trans-category" name="CATEGORY" required>
+                                <option value="Groceries">Groceries</option>
+                                <option value="Salary">Salary</option>
+                                <option value="Credit Card Payment">Credit Card Payment</option>
+                                <option value="Savings Deposit">Savings Deposit</option>
+                                <option value="Bills">Bills</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-trans-amount" class="form-label">Amount (₱)</label>
+                            <input type="number" step="0.01" class="form-control" id="edit-trans-amount" name="AMOUNT" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-trans-desc" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="edit-trans-desc" name="DESCRIPTION">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-trans-method" class="form-label">Payment Method</label>
+                            <select class="form-select" id="edit-trans-method" name="PAYMENTMETHOD">
+                                <option value="Cash">Cash</option>
+                                <option value="Credit Card">Credit Card</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Digital Wallet">Digital Wallet</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-trans-account" class="form-label">Credit Card / Account ID</label>
+                            <input type="text" class="form-control" id="edit-trans-account" name="ACCOUNT" placeholder="e.g., CARD-2001">
+                        </div>
+                         <div class="mb-3">
+                            <label for="edit-trans-related" class="form-label">Goal ID (for Savings Deposit)</label>
+                            <input type="text" class="form-control" id="edit-trans-related" name="RELATED_ID" placeholder="e.g., GOAL-3001">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
             </div>

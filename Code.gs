@@ -208,9 +208,31 @@ function loadData(sheetName) {
 }
 
 /**
- * Loads all data for a specific type of tab.
+ * Loads and filters transactions based on provided criteria.
+ * @param {Object} filters An object containing type, category, startDate, and endDate.
+ * @return {Array<Object>} The filtered transaction data.
  */
-function loadTransactions() { return loadData('Transactions'); }
+function loadTransactions(filters = {}) {
+  let transactions = loadData('Transactions');
+
+  // Apply filters if they exist
+  if (filters) {
+    transactions = transactions.filter(t => {
+      const transactionDate = new Date(t.DATE);
+      const startDate = filters.startDate ? new Date(filters.startDate) : null;
+      const endDate = filters.endDate ? new Date(filters.endDate) : null;
+
+      if (filters.type && t.TYPE !== filters.type) return false;
+      if (filters.category && t.CATEGORY !== filters.category) return false;
+      if (startDate && transactionDate < startDate) return false;
+      if (endDate && transactionDate > endDate) return false;
+
+      return true;
+    });
+  }
+
+  return transactions;
+}
 
 function loadCreditCards() { 
   const cards = loadData('Credit_Cards');
@@ -450,13 +472,76 @@ function recalculateAndUpdateCardBalances() {
 // --- Action & Update Functions ---
 
 /**
+ * Deletes a record from a sheet by its unique ID.
+ * @param {string} sheetName The name of the sheet.
+ * @param {string} id The unique ID of the record to delete.
+ * @return {Object} Status and message.
+ */
+function deleteRecord(sheetName, id) {
+  try {
+    const sheet = getSheet(sheetName);
+    const [headers, ...rows] = sheet.getDataRange().getValues();
+    const idColIndex = 0; // The first column is always the ID
+
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i][idColIndex] === id) {
+        sheet.deleteRow(i + 2); // +1 for 0-index, +1 for header row
+        return { status: 'success', message: `Record ${id} deleted successfully from ${sheetName}.` };
+      }
+    }
+    return { status: 'error', message: `Record ${id} not found in ${sheetName}.` };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+/**
+ * (Placeholder) Edits a record in a sheet.
+ * @param {string} sheetName The name of the sheet.
+ * @param {string} id The ID of the record to edit.
+ * @param {Object} formData The new data.
+ * @return {Object} Status and message.
+ */
+function editRecord(sheetName, id, formData) {
+  // In a real implementation, this would call updateRecordById.
+  // For now, it's a placeholder.
+  // In a real implementation, this would call updateRecordById.
+  return updateRecord(sheetName, id, formData);
+}
+
+/**
+ * Gets a single record from a sheet by its unique ID.
+ * @param {string} sheetName The name of the sheet.
+ * @param {string} id The unique ID to find.
+ * @return {Object|null} The record as an object, or null if not found.
+ */
+function getRecordById(sheetName, id) {
+  const sheet = getSheet(sheetName);
+  const [headers, ...rows] = sheet.getDataRange().getValues();
+  const idColIndex = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][idColIndex] === id) {
+      const record = {};
+      headers.forEach((header, j) => {
+        const key = header.replace(/[^a-zA-Z0-9_]/g, '').toUpperCase();
+        record[key] = rows[i][j];
+      });
+      return record;
+    }
+  }
+  return null;
+}
+
+
+/**
  * Finds and updates a row based on its unique ID.
  * @param {string} sheetName The name of the sheet.
  * @param {string} id The unique ID to match.
  * @param {Object} data The data object with updated values.
  * @return {boolean} True if update was successful.
  */
-function updateRecordById(sheetName, id, data) {
+function updateRecord(sheetName, id, data) {
   const sheet = getSheet(sheetName);
   const [headers, ...rows] = sheet.getDataRange().getValues();
   const idColIndex = 0; // The first column is always the ID
@@ -564,7 +649,7 @@ function updateCreditCardBalance(cardId, amount, type, category) {
     }
 
     // Update the record in the sheet
-    updateRecordById('Credit_Cards', cardId, updateData);
+    updateRecord('Credit_Cards', cardId, updateData);
   }
 }
 
@@ -577,7 +662,54 @@ function updateSavingsGoal(goalId, depositAmount) {
   
   if (goal) {
     const newSavedAmount = (goal.SAVEDAMOUNT || 0) + depositAmount;
-    updateRecordById('Goals', goalId, { SAVEDAMOUNT: newSavedAmount });
+    updateRecord('Goals', goalId, { SAVEDAMOUNT: newSavedAmount });
+  }
+}
+
+/**
+ * Creates a transaction from a paid reminder and resets the reminder. (Logic C)
+ * @param {string} reminderId The ID of the reminder marked as paid.
+ * @param {Object} formData Reminder data.
+ * @return {Object} Status and message.
+ */
+function markReminderPaid(reminderId, formData) {
+  try {
+    const reminder = getRecordById('Reminders', reminderId);
+    if (!reminder) {
+      return { status: 'error', message: 'Reminder not found.' };
+    }
+
+    // 1. Automatically create a new transaction (Expense)
+    const transactionData = {
+      DATE: new Date().toLocaleDateString('en-US'),
+      TYPE: 'Expense',
+      CATEGORY: reminder.CATEGORY || 'Bill Payment',
+      AMOUNT: reminder.AMOUNT || 0,
+      DESCRIPTION: `Payment for Reminder: ${reminder.DESCRIPTION}`,
+      PAYMENTMETHOD: reminder.PAYMENTCHANNEL || 'Other',
+      ACCOUNT: '',
+      RELATED_ID: reminderId
+    };
+    addTransaction(transactionData);
+
+    // 2. Update reminder status
+    let updateData = { STATUS: 'Paid' };
+
+    // 3. Reset next due date if recurring
+    if (reminder.RECURRING === 'Yes') {
+      const currentDueDate = new Date(reminder.DUEDATE);
+      let nextDueDate = new Date(currentDueDate);
+
+      // Simple recurring logic: assumes monthly for a clean example
+      nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      updateData.DUEDATE = nextDueDate.toLocaleDateString('en-US');
+    }
+
+    updateRecord('Reminders', reminderId, updateData);
+
+    return { status: 'success', message: `Reminder ${reminderId} marked paid and transaction created.` };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
   }
 }
 
